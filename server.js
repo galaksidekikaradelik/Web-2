@@ -1,3 +1,5 @@
+require('dotenv').config()
+
 const express = require("express")
 const db = require("./db")
 
@@ -14,3 +16,4 @@ app.listen(PORT, () => {
     console.log(`Server running on PORT ${PORT}`)
 })
 
+module.exports = app
