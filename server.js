@@ -1,19 +1,26 @@
-require('dotenv').config()
+const express = require("express");
+const categoryRoutes = require("./routes/categoryRoutes");
+const authRoutes = require("./routes/authRoutes");
 
-const express = require("express")
-const db = require("./db")
 
-const app = express()
-const PORT = 3000
+const app = express();
+const PORT = 3000;
 
-app.use(express.json())
+app.use(express.json());
+app.use((req, res, next) => {
+  console.log("METHOD:", req.method);
+  console.log("URL:", req.url);
+  console.log("BODY:", req.body);
+  next();
+});
+app.get("/", (req, res) => {
+  res.send("E-commerce API is running");
+});
 
-app.get("/", (req,res) => {
-    res.send("E-commerce running")
-})
+app.use("/categories", categoryRoutes);
+app.use("/", authRoutes);
+
 
 app.listen(PORT, () => {
-    console.log(`Server running on PORT ${PORT}`)
-})
-
-module.exports = app
+  console.log(`Server running on http://localhost:${PORT}`);
+});
