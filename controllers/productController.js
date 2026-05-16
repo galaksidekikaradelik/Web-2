@@ -1,201 +1,116 @@
 const db = require("../db");
 
+// GET ALL
 exports.getAllProducts = (req, res) => {
-  const sql = "SELECT * FROM products";
+    const sql = `
+        SELECT products.*, categories.name AS category
+        FROM products
+        JOIN categories ON products.category_id = categories.id
+    `;
 
-  db.query(sql, (err, result) => {
-    if (err) {
-      return res.status(500).json({ message: "Error getting products" });
-    }
-
-    res.json(result);
-  });
+    db.query(sql, (err, result) => {
+        if (err) return res.status(500).json({ message: "Error" });
+        res.json(result);
+    });
 };
 
+// GET BY ID
 exports.getProductById = (req, res) => {
-  const id = req.params.id;
+    const id = req.params.id;
 
-  if (isNaN(id)) {
-    return res.status(400).json({ message: "Invalid ID" });
-  }
+    const sql = "SELECT * FROM products WHERE id = ?";
 
-  const sql = "SELECT * FROM products WHERE id = ?";
+    db.query(sql, [id], (err, result) => {
+        if (err) return res.status(500).json({ message: "Error" });
+        if (result.length === 0)
+            return res.status(404).json({ message: "Not found" });
 
-  db.query(sql, [id], (err, result) => {
-    if (err) {
-      return res.status(500).json({ message: "Error getting product" });
-    }
-
-    if (result.length === 0) {
-      return res.status(404).json({ message: "Product not found" });
-    }
-
-    res.json(result[0]);
-  });
+        res.json(result[0]);
+    });
 };
 
+// BY CATEGORY
 exports.getProductsByCategory = (req, res) => {
-  const categoryId = req.params.categoryId;
+    const sql = "SELECT * FROM products WHERE category_id = ?";
 
-  if (isNaN(categoryId)) {
-    return res.status(400).json({ message: "Invalid category ID" });
-  }
-
-  const sql = "SELECT * FROM products WHERE category_id = ?";
-
-  db.query(sql, [categoryId], (err, result) => {
-    if (err) {
-      return res.status(500).json({ message: "Error getting products" });
-    }
-
-    res.json(result);
-  });
+    db.query(sql, [req.params.categoryId], (err, result) => {
+        if (err) return res.status(500).json({ message: "Error" });
+        res.json(result);
+    });
 };
 
+// CREATE PRODUCT
 exports.createProduct = (req, res) => {
-  const { name, description, price, category_id, stock, picture_id } = req.body;
 
-  if (!name || !price || !category_id) {
-    return res.status(400).json({
-      message: "Name, price, and category_id are required"
-    });
-  }
+    const { name, description, price, category_id, stock } = req.body;
 
-  if (name.trim().length < 3) {
-    return res.status(400).json({
-      message: "Product name must be at least 3 characters"
-    });
-  }
+    const image = req.file ? req.file.filename : null;
 
-  if (isNaN(price) || price <= 0) {
-    return res.status(400).json({
-      message: "Price must be a positive number"
-    });
-  }
+    const sql = `
+        INSERT INTO products
+        (name, description, price, category_id, stock, image_url)
+        VALUES (?, ?, ?, ?, ?, ?)
+    `;
 
-  if (isNaN(category_id)) {
-    return res.status(400).json({
-      message: "Invalid category_id"
-    });
-  }
+    db.query(sql,
+        [name, description, price, category_id, stock || 0, image],
+        (err, result) => {
 
-  const sql = `
-    INSERT INTO products (name, description, price, category_id, stock, picture_id)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `;
+            if (err) {
+                console.log(err);
+                return res.status(500).json({ message: "Error" });
+            }
 
-  db.query(
-    sql,
-    [name, description || null, price, category_id, stock || 0, picture_id || null],
-    (err, result) => {
-      if (err) {
-        console.log(err);
-        return res.status(500).json({ message: "Error creating product" });
-      }
-
-      res.status(201).json({
-        message: "Product created successfully",
-        productId: result.insertId
-      });
-    }
-  );
+            res.status(201).json({
+                message: "Product created",
+                productId: result.insertId,
+                image
+            });
+        }
+    );
 };
 
+// UPDATE PRODUCT
 exports.updateProduct = (req, res) => {
-  const id = req.params.id;
-  const { name, description, price, category_id, stock, picture_id } = req.body;
 
-  if (isNaN(id)) {
-    return res.status(400).json({ message: "Invalid ID" });
-  }
+    const id = req.params.id;
+    const { name, description, price, category_id, stock } = req.body;
 
-  if (!name && !description && !price && !category_id && stock === undefined && !picture_id) {
-    return res.status(400).json({
-      message: "At least one field must be provided for update"
+    const image = req.file ? req.file.filename : null;
+
+    let fields = [];
+    let values = [];
+
+    if (name) { fields.push("name=?"); values.push(name); }
+    if (description) { fields.push("description=?"); values.push(description); }
+    if (price) { fields.push("price=?"); values.push(price); }
+    if (category_id) { fields.push("category_id=?"); values.push(category_id); }
+    if (stock !== undefined) { fields.push("stock=?"); values.push(stock); }
+    if (image) { fields.push("image_url=?"); values.push(image); }
+
+    values.push(id);
+
+    const sql = `UPDATE products SET ${fields.join(", ")} WHERE id=?`;
+
+    db.query(sql, values, (err, result) => {
+        if (err) return res.status(500).json({ message: "Error" });
+        if (result.affectedRows === 0)
+            return res.status(404).json({ message: "Not found" });
+
+        res.json({ message: "Updated" });
     });
-  }
-
-  if (name && name.trim().length < 3) {
-    return res.status(400).json({
-      message: "Product name must be at least 3 characters"
-    });
-  }
-
-  if (price && (isNaN(price) || price <= 0)) {
-    return res.status(400).json({
-      message: "Price must be a positive number"
-    });
-  }
-
-  if (category_id && isNaN(category_id)) {
-    return res.status(400).json({
-      message: "Invalid category_id"
-    });
-  }
-
-  let updateFields = [];
-  let updateValues = [];
-
-  if (name) {
-    updateFields.push("name = ?");
-    updateValues.push(name);
-  }
-  if (description) {
-    updateFields.push("description = ?");
-    updateValues.push(description);
-  }
-  if (price) {
-    updateFields.push("price = ?");
-    updateValues.push(price);
-  }
-  if (category_id) {
-    updateFields.push("category_id = ?");
-    updateValues.push(category_id);
-  }
-  if (stock !== undefined) {
-    updateFields.push("stock = ?");
-    updateValues.push(stock);
-  }
-  if (picture_id) {
-    updateFields.push("picture_id = ?");
-    updateValues.push(picture_id);
-  }
-
-  updateValues.push(id);
-
-  const sql = `UPDATE products SET ${updateFields.join(", ")} WHERE id = ?`;
-
-  db.query(sql, updateValues, (err, result) => {
-    if (err) {
-      return res.status(500).json({ message: "Error updating product" });
-    }
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ message: "Product not found" });
-    }
-
-    res.json({ message: "Product updated successfully" });
-  });
 };
 
+// DELETE PRODUCT
 exports.deleteProduct = (req, res) => {
-  const id = req.params.id;
 
-  if (isNaN(id)) {
-    return res.status(400).json({ message: "Invalid ID" });
-  }
+    const sql = "DELETE FROM products WHERE id=?";
 
-  const sql = "DELETE FROM products WHERE id = ?";
+    db.query(sql, [req.params.id], (err, result) => {
+        if (err) return res.status(500).json({ message: "Error" });
+        if (result.affectedRows === 0)
+            return res.status(404).json({ message: "Not found" });
 
-  db.query(sql, [id], (err, result) => {
-    if (err) {
-      return res.status(500).json({ message: "Error deleting product" });
-    }
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ message: "Product not found" });
-    }
-
-    res.json({ message: "Product deleted successfully" });
-  });
+        res.json({ message: "Deleted" });
+    });
 };
