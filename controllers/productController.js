@@ -1,6 +1,5 @@
 const db = require("../db");
 
-// GET ALL
 exports.getAllProducts = (req, res) => {
     const sql = `
         SELECT products.*, categories.name AS category
@@ -14,7 +13,6 @@ exports.getAllProducts = (req, res) => {
     });
 };
 
-// GET BY ID
 exports.getProductById = (req, res) => {
     const id = req.params.id;
 
@@ -29,7 +27,6 @@ exports.getProductById = (req, res) => {
     });
 };
 
-// BY CATEGORY
 exports.getProductsByCategory = (req, res) => {
     const sql = "SELECT * FROM products WHERE category_id = ?";
 
@@ -39,7 +36,6 @@ exports.getProductsByCategory = (req, res) => {
     });
 };
 
-// CREATE PRODUCT
 exports.createProduct = (req, res) => {
 
     const { name, description, price, category_id, stock } = req.body;
@@ -70,7 +66,6 @@ exports.createProduct = (req, res) => {
     );
 };
 
-// UPDATE PRODUCT
 exports.updateProduct = (req, res) => {
 
     const id = req.params.id;
@@ -101,7 +96,6 @@ exports.updateProduct = (req, res) => {
     });
 };
 
-// DELETE PRODUCT
 exports.deleteProduct = (req, res) => {
 
     const sql = "DELETE FROM products WHERE id=?";
