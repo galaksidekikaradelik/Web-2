@@ -7,7 +7,6 @@ const SECRET_KEY = 'mySecretKey';
 exports.register = async (req, res) => {
     const { name, email, password, role } = req.body;
 
-
     if (!name || !email || !password) {
         return res.status(400).json({
             message: 'Name, email and password are required'
@@ -15,7 +14,6 @@ exports.register = async (req, res) => {
     }
 
     try {
-
         const checkUserSql = 'SELECT * FROM users WHERE email = ?';
 
         db.query(checkUserSql, [email], async (err, userResult) => {
@@ -150,4 +148,4 @@ exports.login = (req, res) => {
             }
         });
     });
-};
+}
